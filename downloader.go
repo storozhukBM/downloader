@@ -145,6 +145,7 @@ func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) 
 	if opts.SkipChecksumVerification {
 		return nil
 	}
+	opts.FilenameToChecksum = make(map[string]string)
 
 	if opts.ChecksumFilePath != "" {
 		checksumFile, checkSumFileErr := os.Open(opts.ChecksumFilePath)
@@ -162,7 +163,6 @@ func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) 
 	}
 
 	if opts.ChecksumFileContent != "" {
-		opts.FilenameToChecksum = make(map[string]string)
 		lines := strings.Split(opts.ChecksumFileContent, "\n")
 		for _, line := range lines {
 			fileName, checkSum, ok := parseChecksumLine(line)
