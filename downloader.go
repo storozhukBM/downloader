@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -150,22 +151,24 @@ func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) 
 		if checkSumFileErr != nil {
 			return fmt.Errorf("can't find checksum file: %v; %w", opts.ChecksumFilePath, checkSumFileErr)
 		}
-		checkSumBytes, checkSumReadErr := io.ReadAll(checksumFile)
-		if checkSumReadErr != nil {
-			return fmt.Errorf("can't read checksum file: %v; %w", opts.ChecksumFilePath, checkSumReadErr)
+		scanner := bufio.NewScanner(checksumFile)
+		for scanner.Scan() {
+			fileName, checkSum, ok := parseChecksumLine(scanner.Text())
+			if !ok {
+				continue
+			}
+			opts.FilenameToChecksum[fileName] = checkSum
 		}
-		opts.ChecksumFileContent = string(checkSumBytes)
 	}
 
 	if opts.ChecksumFileContent != "" {
 		opts.FilenameToChecksum = make(map[string]string)
 		lines := strings.Split(opts.ChecksumFileContent, "\n")
 		for _, line := range lines {
-			if len(line) < 67 {
+			fileName, checkSum, ok := parseChecksumLine(line)
+			if !ok {
 				continue
 			}
-			checkSum := line[:64]
-			fileName := line[66:]
 			opts.FilenameToChecksum[fileName] = checkSum
 		}
 	}
@@ -201,6 +204,15 @@ func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) 
 
 	opts.InfoPrinter(fmt.Sprintf("checksum verified. file: %v; checksum: %v", opts.FileName, resultCheckSum))
 	return nil
+}
+
+func parseChecksumLine(line string) (string, string, bool) {
+	if len(line) < 67 {
+		return "", "", false
+	}
+	checkSum := line[:64]
+	fileName := line[66:]
+	return checkSum, fileName, true
 }
 
 func decompressIfNecessary(opts DownloadExecutableOptions, archivePath string) (string, error) {
