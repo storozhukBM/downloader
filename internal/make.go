@@ -5,7 +5,7 @@ import (
 	"github.com/storozhukBM/downloader"
 )
 
-const golangCiLinterVersion = "1.41.0"
+const golangCiLinterVersion = "1.41.1"
 
 var b = build.NewBuild(build.BuildOptions{})
 
