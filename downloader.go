@@ -212,7 +212,7 @@ func parseChecksumLine(line string) (string, string, bool) {
 	}
 	checkSum := line[:64]
 	fileName := line[66:]
-	return checkSum, fileName, true
+	return fileName, checkSum, true
 }
 
 func decompressIfNecessary(opts DownloadExecutableOptions, archivePath string) (string, error) {
