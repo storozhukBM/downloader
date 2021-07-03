@@ -49,6 +49,7 @@ type DownloadExecutableOptions struct {
 	SkipDecompression        bool
 
 	SkipChecksumVerification bool
+	ChecksumFilePath         string
 	ChecksumFileContent      string
 	FilenameToChecksum       map[string]string
 
@@ -142,6 +143,18 @@ func downloadWithOpts(opts DownloadExecutableOptions) (string, error) {
 func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) error {
 	if opts.SkipChecksumVerification {
 		return nil
+	}
+
+	if opts.ChecksumFilePath != "" {
+		checksumFile, checkSumFileErr := os.Open(opts.ChecksumFilePath)
+		if checkSumFileErr != nil {
+			return fmt.Errorf("can't find checksum file: %v; %w", opts.ChecksumFilePath, checkSumFileErr)
+		}
+		checkSumBytes, checkSumReadErr := io.ReadAll(checksumFile)
+		if checkSumReadErr != nil {
+			return fmt.Errorf("can't read checksum file: %v; %w", opts.ChecksumFilePath, checkSumReadErr)
+		}
+		opts.ChecksumFileContent = string(checkSumBytes)
 	}
 
 	if opts.ChecksumFileContent != "" {
