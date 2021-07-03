@@ -189,7 +189,10 @@ func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) 
 
 	expectedChecksum, ok := opts.FilenameToChecksum[opts.FileName]
 	if !ok {
-		return fmt.Errorf("can't find expected checksum. file: %v", filePath)
+		return fmt.Errorf(
+			"can't find expected checksum. filePath: %v; fileName: %v; checkSums: %+v",
+			filePath, opts.FileName, opts.FilenameToChecksum,
+		)
 	}
 
 	if expectedChecksum != resultCheckSum {
