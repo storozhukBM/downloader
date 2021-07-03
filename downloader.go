@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -49,6 +50,7 @@ type DownloadExecutableOptions struct {
 	SkipDecompression        bool
 
 	SkipChecksumVerification bool
+	ChecksumFilePath         string
 	ChecksumFileContent      string
 	FilenameToChecksum       map[string]string
 
@@ -143,16 +145,30 @@ func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) 
 	if opts.SkipChecksumVerification {
 		return nil
 	}
+	opts.FilenameToChecksum = make(map[string]string)
 
-	if opts.ChecksumFileContent != "" {
-		opts.FilenameToChecksum = make(map[string]string)
-		lines := strings.Split(opts.ChecksumFileContent, "\n")
-		for _, line := range lines {
-			if len(line) < 67 {
+	if opts.ChecksumFilePath != "" {
+		checksumFile, checkSumFileErr := os.Open(opts.ChecksumFilePath)
+		if checkSumFileErr != nil {
+			return fmt.Errorf("can't find checksum file: %v; %w", opts.ChecksumFilePath, checkSumFileErr)
+		}
+		scanner := bufio.NewScanner(checksumFile)
+		for scanner.Scan() {
+			fileName, checkSum, ok := parseChecksumLine(scanner.Text())
+			if !ok {
 				continue
 			}
-			checkSum := line[:64]
-			fileName := line[66:]
+			opts.FilenameToChecksum[fileName] = checkSum
+		}
+	}
+
+	if opts.ChecksumFileContent != "" {
+		lines := strings.Split(opts.ChecksumFileContent, "\n")
+		for _, line := range lines {
+			fileName, checkSum, ok := parseChecksumLine(line)
+			if !ok {
+				continue
+			}
 			opts.FilenameToChecksum[fileName] = checkSum
 		}
 	}
@@ -176,7 +192,10 @@ func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) 
 
 	expectedChecksum, ok := opts.FilenameToChecksum[opts.FileName]
 	if !ok {
-		return fmt.Errorf("can't find expected checksum. file: %v", filePath)
+		return fmt.Errorf(
+			"can't find expected checksum. filePath: %v; fileName: %v; checkSums: %+v",
+			filePath, opts.FileName, opts.FilenameToChecksum,
+		)
 	}
 
 	if expectedChecksum != resultCheckSum {
@@ -185,6 +204,15 @@ func verifyChecksumIfNecessary(opts DownloadExecutableOptions, filePath string) 
 
 	opts.InfoPrinter(fmt.Sprintf("checksum verified. file: %v; checksum: %v", opts.FileName, resultCheckSum))
 	return nil
+}
+
+func parseChecksumLine(line string) (string, string, bool) {
+	if len(line) < 67 {
+		return "", "", false
+	}
+	checkSum := line[:64]
+	fileName := line[66:]
+	return fileName, checkSum, true
 }
 
 func decompressIfNecessary(opts DownloadExecutableOptions, archivePath string) (string, error) {
